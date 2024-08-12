@@ -5,12 +5,12 @@
  */
 
 import definePlugin from "@utils/types";
-import { findByPropsLazy } from "@webpack";
 import { insertTextIntoChatInputBox } from "@utils/discord";
 
 const API_URL = 'https://api.languagetool.org/v2/check';
 const LANGUAGE = 'fr';
 
+// Fonction pour vérifier l'orthographe
 async function checkSpelling(text: string): Promise<any[]> {
     try {
         const response = await fetch(API_URL, {
@@ -32,28 +32,30 @@ async function checkSpelling(text: string): Promise<any[]> {
     }
 }
 
+// Fonction pour corriger le texte
 async function correctText() {
-    const text = document.querySelector('textarea')?.value || '';
+    const textArea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (!textArea) return;
 
-    if (!text) return;
-
+    const text = textArea.value;
     const matches = await checkSpelling(text);
+
     if (matches.length > 0) {
-        const correctedText = matches.reduce((acc, match) => {
-            const suggestion = match.replacements.length > 0 ? match.replacements[0].value : match.context.text.substring(match.context.offset, match.context.offset + match.context.length);
-            return acc.replace(match.context.text.substring(match.context.offset, match.context.offset + match.context.length), suggestion);
-        }, text);
+        let correctedText = text;
+        matches.forEach(match => {
+            const replacement = match.replacements.length > 0 ? match.replacements[0].value : match.context.text.substring(match.context.offset, match.context.offset + match.context.length);
+            correctedText = correctedText.replace(match.context.text.substring(match.context.offset, match.context.offset + match.context.length), replacement);
+        });
 
         insertTextIntoChatInputBox(correctedText);
-    } else {
-        console.log("No spelling errors found.");
     }
 }
 
+// Exportation du plugin
 export default definePlugin({
     name: "SpellChecker",
     description: "Corrects spelling in your messages using LanguageTool API before sending.",
     authors: ["YourName"],
     dependencies: [],
-    onMessageSend: correctText, // Hook into the message send event to check and correct text
+    onMessageSend: correctText, // Fonction appelée avant l'envoi du message
 });
